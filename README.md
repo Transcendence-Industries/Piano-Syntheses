@@ -18,8 +18,8 @@
 ## Features
 
 - Works with any musical tempo or scale.
-- Universal key recognition
-- Universal key color recognition
+- Universal key-position recognition
+- Universal key-color recognition
 
 ## Screenshots
 
@@ -31,7 +31,7 @@ Work in progress!
 - mido
 - numpy
 - PIL
-- tkinter
+- tkinter (shipped with python)
 
 ## Setup
 
@@ -43,5 +43,5 @@ Use `python main.py` to start the program and follow along the screenshots.
 
 ## TO-DO
 
-- Adjustable key color
+- Adjustable key-color
 - Adjustable thresholds
