@@ -20,7 +20,7 @@
 
 ## Features
 
-- Works with any musical tempo or scale.
+- Compatible with any tempo or scale
 - Universal key-position recognition
 - Universal key-color recognition
 
@@ -49,12 +49,14 @@ Use `pip install -r requirements.txt` to install all necessary dependencies.
 
 ## Usage
 
-Use `python main.py` to start the program and follow along the screenshots.
+- Use `python main.py` to start the program.
+- Follow along the screenshots.
 
-## TO-DO
+## To-Do
 
-- Adjustable key-color
-- Adjustable thresholds
+- Adjustable key color
+- Adjustable recognition thresholds
+- Proper logging & config
 
 ## Acknowledgements
 
