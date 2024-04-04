@@ -2,7 +2,7 @@ from PIL import Image, ImageTk
 from tkinter import Tk, Frame, Label, Entry, Button, StringVar, filedialog, messagebox
 from tkinter.ttk import Progressbar
 
-from Processing import *
+from processing import *
 
 PREVIEW_DIMENSIONS = (960, 540)
 

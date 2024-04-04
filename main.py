@@ -1,4 +1,4 @@
-from Gui import *
+from gui import *
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
