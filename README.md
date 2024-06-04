@@ -32,8 +32,11 @@
 *Step 2: Select a frame, on which every key is recognized*
 ![Step_2](./Screenshots/Step_2.jpg)
 
-*Step 3: Select a midi file as output and analyze frames*
+*Step 3: Adjust settings in the separate window*
 ![Step_3](./Screenshots/Step_3.jpg)
+
+*Step 4: Select a midi file as output and analyze frames*
+![Step_4](./Screenshots/Step_4.jpg)
 
 ## Dependencies
 
@@ -51,12 +54,6 @@ Use `pip install -r requirements.txt` to install all necessary dependencies.
 
 - Use `python main.py` to start the program.
 - Follow along the screenshots.
-
-## To-Do
-
-- Adjustable key color
-- Adjustable recognition thresholds
-- Proper logging & config
 
 ## Acknowledgements
 

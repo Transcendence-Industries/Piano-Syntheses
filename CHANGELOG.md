@@ -1,5 +1,11 @@
 # Change Log
 
-## [0.1] - 2023-05-31
+## [1.1] - 2024-06-04
 
-### Initial Release
+- Added adjustable key colors/thresholds
+- Added other settings
+- Added better logging
+
+## [1.0] - 2023-05-31
+
+- ### Initial Release
