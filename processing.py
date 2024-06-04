@@ -1,24 +1,11 @@
 import os
-import logging
 import cv2
 import mido
 import numpy as np
 from mido import MidiFile, MidiTrack, Message
 
-MIN_KEY_AREA = 500  # Pixels
-MIN_PRESSED_AREA = 0.45  # Percentage
+from log import logger
 
-# BGR
-WHITE_KEY_COLOR = (227, 250, 252)
-BLACK_KEY_COLOR = (13, 12, 14)
-PRESSED_COLOR = (85, 221, 157)
-
-WHITE_KEY_SCALAR = 0.25
-BLACK_KEY_SCALAR = 0.5
-PRESSED_SCALAR = 0.55
-
-MIDI_VELOCITY = 64
-MIDI_NOTE_OFFSET = 21
 KEYBOARD = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 
@@ -28,10 +15,10 @@ def extract_frames(path, progress, window):
     dim = (video.get(cv2.CAP_PROP_FRAME_WIDTH), video.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = video.get(cv2.CAP_PROP_FPS)
     length = video.get(cv2.CAP_PROP_FRAME_COUNT)
-    logging.info(f"Video '{os.path.basename(path)}' loaded")
-    logging.info(f"> Dimensions: {dim}")
-    logging.info(f"> FPS: {fps}")
-    logging.info(f"> Length: {length} frames ({int(length / fps)} seconds)")
+    logger.info(f"Video '{os.path.basename(path)}' loaded")
+    logger.info(f"> Dimensions: {dim}")
+    logger.info(f"> FPS: {fps}")
+    logger.info(f"> Length: {length} frames ({int(length / fps)} seconds)")
 
     ret = True
     frames = []
@@ -51,7 +38,7 @@ def extract_frames(path, progress, window):
             if frame_num % 100 == 0:
                 progress["value"] = frame_num / length * 100
                 window.update_idletasks()
-                logging.debug(f"Frame {frame_num} extracted")
+                logger.info(f"Frame {frame_num} extracted")
 
     progress["value"] = 100
     window.update_idletasks()
@@ -97,10 +84,10 @@ def get_key_count(keys):
     return count
 
 
-def search_keys(frame):
+def search_keys(frame, settings):
     # Define masks
-    white_mask = cv2.inRange(frame, *get_color_ranges(WHITE_KEY_COLOR, WHITE_KEY_SCALAR))
-    black_mask = cv2.inRange(frame, *get_color_ranges(BLACK_KEY_COLOR, BLACK_KEY_SCALAR))
+    white_mask = cv2.inRange(frame, *get_color_ranges(settings["white_color"], settings["white_threshold"]))
+    black_mask = cv2.inRange(frame, *get_color_ranges(settings["black_color"], settings["black_threshold"]))
 
     # Find contours
     white_keys = cv2.findContours(white_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
@@ -109,16 +96,16 @@ def search_keys(frame):
     black_keys = [cv2.boundingRect(i) for i in black_keys]
 
     # Filter contours
-    white_keys = [(x, y, w, h) for x, y, w, h in white_keys if w * h > MIN_KEY_AREA]
-    black_keys = [(x, y, w, h) for x, y, w, h in black_keys if w * h > MIN_KEY_AREA]
+    white_keys = [(x, y, w, h) for x, y, w, h in white_keys if w * h > settings["min_area_pixel"]]
+    black_keys = [(x, y, w, h) for x, y, w, h in black_keys if w * h > settings["min_area_pixel"]]
 
     # Sort by x coordinate
     white_keys = sorted(white_keys, key=lambda x: x[0])
     black_keys = sorted(black_keys, key=lambda x: x[0])
 
-    logging.info(f"Found {len(white_keys + black_keys)} keys ({len(white_keys)} white, {len(black_keys)} black)")
+    logger.info(f"Found {len(white_keys + black_keys)} keys ({len(white_keys)} white, {len(black_keys)} black)")
     if len(white_keys + black_keys) != 88:
-        logging.warning(f"Key count is not equal to 88")
+        logger.warning(f"Key count is not equal to 88")
 
     white_index = 0
     black_index = 0
@@ -154,12 +141,13 @@ def draw_keys(keys, img):
     else:
         cv2.putText(img, f"Keys: {length}/88", org=(50, 50), color=(255, 0, 0),
                     fontScale=1, fontFace=0, thickness=2)
+
     return img
 
 
-def analyse_frame(keys, frame):
+def analyse_frame(keys, frame, settings):
     pressed = get_key_dict(False)
-    mask = cv2.inRange(frame, *get_color_ranges(PRESSED_COLOR, PRESSED_SCALAR))
+    mask = cv2.inRange(frame, *get_color_ranges(settings["pressed_color"], settings["pressed_threshold"]))
     detected = cv2.bitwise_and(frame, frame, mask=mask)
 
     # Loop over keys
@@ -170,37 +158,32 @@ def analyse_frame(keys, frame):
             color = np.count_nonzero(box)
 
             # Check if key is pressed
-            if color / (w * h) >= MIN_PRESSED_AREA:
+            if color / (w * h) >= settings["min_area_percent"]:
                 pressed[note] = True
 
     return pressed
 
 
-def analyse_frames(keys, frames, progress, window):
+def analyse_frames(keys, frames, progress, window, settings):
     piece = []
 
     # Loop over frames
     for i, frame in enumerate(frames):
-        pressed = analyse_frame(keys, frame)
+        pressed = analyse_frame(keys, frame, settings)
         piece.append(pressed)
 
         # Update progress every 100 frames
         if i % 100 == 0:
             progress["value"] = i / len(frames) * 100
             window.update_idletasks()
-            logging.debug(f"Frame {i} analysed")
-
-            # Print debugging log
-            for note, state in pressed.items():
-                if state:
-                    logging.debug(f"> Note {note} pressed")
+            logger.info(f"Frame {i} analysed")
 
     progress["value"] = 100
     window.update_idletasks()
     return piece
 
 
-def convert_to_midi(piece, props, path):
+def convert_to_midi(piece, props, path, settings):
     # Initial setup
     track = MidiTrack()
     midi = MidiFile(type=0)
@@ -222,9 +205,13 @@ def convert_to_midi(piece, props, path):
                 ticks = int(mido.second2tick(1 / props["fps"], midi.ticks_per_beat, 500000) * delay)
 
                 if state:  # Note pressed
-                    track.append(Message("note_on", note=MIDI_NOTE_OFFSET + key, velocity=MIDI_VELOCITY, time=ticks))
+                    track.append(
+                        Message("note_on", note=settings["note_offset"] + key, velocity=settings["midi_velocity"],
+                                time=ticks))
                 else:  # Note released
-                    track.append(Message("note_off", note=MIDI_NOTE_OFFSET + key, velocity=MIDI_VELOCITY, time=ticks))
+                    track.append(
+                        Message("note_off", note=settings["note_offset"] + key, velocity=settings["midi_velocity"],
+                                time=ticks))
 
                 delay = 0
                 messages += 1
@@ -233,7 +220,7 @@ def convert_to_midi(piece, props, path):
 
         # Update progress every 100 times
         if time % 100 == 0:
-            logging.debug(f"Timing {time} converted")
+            logger.info(f"Timing {time} converted")
 
     midi.save(path)
-    logging.info(f"MIDI '{os.path.basename(path)}' saved ({messages} messages)")
+    logger.info(f"MIDI '{os.path.basename(path)}' saved ({messages} messages)")
